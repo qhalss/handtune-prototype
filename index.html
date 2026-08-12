@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HandTune Adaptive Hand Play</title>
+  <style>
+    :root{
+      --bg:#f6f8ff; --panel:#ffffff; --ink:#172033; --muted:#647089;
+      --primary:#5268ff; --primary2:#7c4dff; --accent:#ffbf47; --ok:#21a67a;
+      --danger:#ef6b73; --line:#dfe5f2; --soft:#eef2ff; --shadow:0 22px 60px rgba(35,45,85,.14);
+      --child:#ff8fb3; --senior:#5ca8ff;
+    }
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:radial-gradient(circle at 10% 0%,#fff7d6 0,#f6f8ff 30%,#eef4ff 100%)}
+    button{font:inherit} .app{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:28px 0 48px}.screen{display:none}.screen.active{display:block}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.brand{display:flex;gap:10px;align-items:center;font-weight:900}.brand-mark{width:38px;height:38px;border-radius:14px;background:linear-gradient(135deg,var(--primary),var(--primary2));display:grid;place-items:center;color:white;box-shadow:0 12px 30px rgba(82,104,255,.28)}
+    .small-btn,.ghost-btn,.main-btn{border:0;border-radius:18px;padding:12px 18px;cursor:pointer;font-weight:800}.small-btn{background:#eef2ff;color:#4150a8}.ghost-btn{background:#fff;border:1px solid var(--line);color:var(--ink)}.main-btn{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;box-shadow:0 14px 30px rgba(82,104,255,.3)}button:hover{transform:translateY(-1px)}button:active{transform:translateY(0)}button:disabled{opacity:.5;cursor:not-allowed}
+
+    /* Home */
+    .home-screen{display:flex;flex-direction:column;gap:26px}.hero-panel{background:rgba(255,255,255,.88);border:1px solid rgba(255,255,255,.85);box-shadow:var(--shadow);border-radius:34px;padding:38px 44px;text-align:center}.hero-title{font-size:clamp(38px,6vw,68px);line-height:.95;margin:0 0 12px;font-weight:1000;letter-spacing:-.04em;background:linear-gradient(135deg,#263158,var(--primary));-webkit-background-clip:text;color:transparent}.hero-subtitle{font-size:clamp(20px,2.7vw,27px);margin:0 0 12px;font-weight:850;letter-spacing:-.02em}.hero-desc{margin:0 auto;color:var(--muted);max-width:760px;font-size:17px;line-height:1.6}.mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.mode-card{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:32px;padding:32px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;cursor:pointer;min-height:270px;transition:.18s}.mode-card:hover{transform:translateY(-4px);border-color:#c4ccff}.mode-emoji{font-size:58px;line-height:1}.mode-card h2{font-size:28px;margin:0}.mode-card p{margin:0;color:var(--muted);line-height:1.55}.mode-card.child{background:linear-gradient(180deg,#fff,#fff5f8)}.mode-card.senior{background:linear-gradient(180deg,#fff,#f2f8ff)}
+
+    .panel{background:rgba(255,255,255,.92);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:30px;padding:26px}.section-title{font-size:34px;line-height:1.15;margin:0 0 8px;font-weight:950;letter-spacing:-.03em}.lead{margin:0 0 18px;color:var(--muted);font-size:17px;line-height:1.55}.row{display:flex;gap:12px;flex-wrap:wrap}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.metric{background:var(--soft);border-radius:20px;padding:16px}.metric strong{display:block;font-size:26px}.bar{height:9px;border-radius:99px;background:#dce3ff;overflow:hidden;margin-top:8px}.bar span{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));width:0%}
+    .result-grid{display:grid;grid-template-columns:360px minmax(0,1fr);gap:18px;align-items:stretch;margin:18px 0}.radar-card{background:#fff;border:1px solid var(--line);border-radius:26px;padding:18px;box-shadow:0 16px 42px rgba(35,45,85,.09)}.radar-card h3{margin:0 0 8px;font-size:20px}.radar-card p{margin:0 0 10px;color:var(--muted);font-size:14px;line-height:1.45}.radar-card canvas{width:100%;height:300px;display:block}.result-grid .metrics{grid-template-columns:1fr;gap:10px}.result-grid .metric{padding:13px 15px}.result-grid .metric strong{font-size:22px}
+
+    /* Camera/game layout */
+    .play-layout{display:grid;grid-template-columns:minmax(0,1.35fr) 360px;gap:18px;align-items:start}.stage-wrap{background:#101828;border-radius:26px;padding:14px;box-shadow:var(--shadow);position:relative}.stage{width:100%;aspect-ratio:16/10;border-radius:18px;overflow:hidden;position:relative;background:#0b1020}.stage canvas{display:block;width:100%;height:100%;background:#111827}.hidden-video{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}.status-pill{position:absolute;left:24px;top:24px;background:rgba(255,255,255,.92);border-radius:999px;padding:9px 13px;font-weight:800;font-size:13px;z-index:2}.side-card{background:#fff;border:1px solid var(--line);border-radius:26px;padding:22px;box-shadow:var(--shadow)}.side-card h3{margin:0 0 8px;font-size:24px}.side-card p{color:var(--muted);line-height:1.55}.feedback{margin-top:14px;background:#fff7d6;border:1px solid #ffe2a3;border-radius:20px;padding:14px;font-weight:800;line-height:1.45}.counter{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}.counter div{background:var(--soft);border-radius:16px;padding:12px}.counter b{display:block;font-size:24px}
+
+    .recommend-row{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin:18px 0 28px}.other-row{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.game-card{background:#fff;border:1px solid var(--line);border-radius:26px;padding:22px;box-shadow:0 16px 42px rgba(35,45,85,.11);display:flex;flex-direction:column;gap:10px}.game-card.recommended{border:2px solid var(--accent);background:linear-gradient(180deg,#fffdf5,#fff)}.badge{display:inline-flex;align-items:center;gap:6px;width:max-content;border-radius:999px;background:#fff1c7;padding:7px 10px;font-size:13px;font-weight:900;color:#8a5a00}.game-card h3{margin:0;font-size:23px}.game-card p{margin:0;color:var(--muted);line-height:1.5}.difficulty{font-weight:900;color:#4150a8}.records{display:grid;grid-template-columns:1fr 1fr;gap:16px}.record-item{border:1px solid var(--line);background:#fff;border-radius:22px;padding:18px}.record-item h3{margin:0 0 8px}.muted{color:var(--muted)}
+    .score-big{font-size:78px;font-weight:1000;line-height:1;margin:18px 0;background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;color:transparent}.legend{font-size:13px;color:var(--muted);line-height:1.5;margin-top:10px}.path-note{background:#eefcf6;border:1px solid #bfe8d6;border-radius:18px;padding:12px;margin:10px 0;font-weight:800;color:#176b51}
+
+    @media(max-width:900px){.mode-grid,.play-layout,.recommend-row,.other-row,.metrics,.records,.result-grid{grid-template-columns:1fr}.hero-panel{padding:30px 22px}.mode-card{min-height:auto}.app{width:min(100% - 20px,1180px)}.section-title{font-size:28px}.radar-card canvas{height:260px}}
+  </style>
+</head>
+<body>
+  <video id="video" class="hidden-video" playsinline muted></video>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand"><span class="brand-mark">✋</span><span>HandTune</span></div>
+      <div class="row"><button class="small-btn" id="homeBtn">처음으로</button><button class="ghost-btn" id="recordsTopBtn">오늘 기록</button></div>
+    </div>
+
+    <section id="home" class="screen active">
+      <div class="home-screen">
+        <div class="hero-panel">
+          <h1 class="hero-title">HandTune</h1>
+          <p class="hero-subtitle">손 움직임으로 시작하는 맞춤형 손 운동</p>
+          <p class="hero-desc">웹캠으로 손 움직임을 인식해 오늘의 손 상태를 측정하고, 어린이와 시니어에게 맞는 소근육 활동을 추천합니다.</p>
+        </div>
+        <div class="mode-grid">
+          <button class="mode-card child" data-mode="child">
+            <span class="mode-emoji">🧒</span>
+            <h2>어린이 소근육 발달 모드</h2>
+            <p>놀이를 통해 손가락 조절력, 집기 능력, 눈-손 협응을 길러요.</p>
+            <span class="main-btn">시작하기</span>
+          </button>
+          <button class="mode-card senior" data-mode="senior">
+            <span class="mode-emoji">🧓</span>
+            <h2>시니어 소근육 재활성화 모드</h2>
+            <p>손가락, 손목, 집기 동작을 천천히 반복하며 손 기능을 활성화해요.</p>
+            <span class="main-btn">시작하기</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="measure" class="screen">
+      <div class="play-layout">
+        <div class="stage-wrap">
+          <div class="status-pill" id="cameraStatus">카메라 준비 중</div>
+          <div class="stage"><canvas id="measureCanvas"></canvas></div>
+        </div>
+        <aside class="side-card">
+          <h3 id="measureTitle">현재 상태 측정</h3>
+          <p id="measureDesc">빛나는 점을 집게 동작으로 잡아 현재 손 상태를 측정합니다.</p>
+          <div class="counter"><div>진행<b id="measureProgress">0/10</b></div><div>성공<b id="measureSuccess">0</b></div></div>
+          <div class="feedback" id="measureFeedback">손가락을 펼친 뒤 목표 가까이 이동하세요.</div>
+          <p class="legend">잡기 판정은 <b>손가락 펼침 → 목표 근처 이동 → 엄지-검지 집기 → 다시 펼침</b> 순서를 만족해야 합니다.</p>
+          <div class="row"><button class="ghost-btn" id="restartMeasureBtn">다시 측정</button><button class="small-btn" id="skipMeasureBtn">예시 결과로 보기</button></div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="measureResult" class="screen">
+      <div class="panel">
+        <h2 class="section-title" id="resultTitle">오늘의 손 프로필</h2>
+        <p class="lead" id="resultLead">측정 결과를 바탕으로 오늘의 추천 활동을 골랐습니다.</p>
+        <div class="result-grid">
+          <div class="radar-card">
+            <h3>5가지 손 기능 균형</h3>
+            <p>속도, 정확도, 가동범위, 안정성, 협응 점수를 오각형으로 보여줍니다.</p>
+            <canvas id="radarCanvas" width="360" height="300"></canvas>
+          </div>
+          <div class="metrics" id="metricsBox"></div>
+        </div>
+        <h3>오늘 추천 활동</h3>
+        <div class="recommend-row" id="resultRecommendations"></div>
+        <div class="row"><button class="main-btn" id="goGameSelectBtn">게임 선택 화면으로</button><button class="ghost-btn" id="remeasureBtn">한 번 더 측정</button><button class="ghost-btn" id="resultRecordsBtn">오늘 기록 보기</button></div>
+      </div>
+    </section>
+
+    <section id="gameSelect" class="screen">
+      <div class="panel">
+        <h2 class="section-title" id="gameSelectTitle">게임 선택</h2>
+        <p class="lead">오늘의 측정 결과에서 가장 낮은 항목 2개에 맞는 추천 게임을 먼저 보여줍니다.</p>
+        <h3>오늘 추천 게임</h3>
+        <div class="recommend-row" id="recommendedGames"></div>
+        <h3>다른 활동</h3>
+        <div class="other-row" id="otherGames"></div>
+      </div>
+    </section>
+
+    <section id="game" class="screen">
+      <div class="play-layout">
+        <div class="stage-wrap">
+          <div class="status-pill" id="gameStatus">게임 준비 중</div>
+          <div class="stage"><canvas id="gameCanvas"></canvas></div>
+        </div>
+        <aside class="side-card">
+          <h3 id="gameTitle">게임</h3>
+          <p id="gameDesc">안내에 따라 손을 움직여보세요.</p>
+          <div id="pathNote" class="path-note" style="display:none">손바닥 가운데 점을 화면의 선 위에 올려 움직이세요.</div>
+          <div class="counter"><div>점수<b id="gameScore">0</b></div><div>진행<b id="gameProgress">0/10</b></div></div>
+          <div class="feedback" id="gameFeedback">시작합니다.</div>
+          <div class="row"><button class="ghost-btn" id="exitGameBtn">게임 선택</button><button class="main-btn" id="finishGameBtn">종료</button></div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="score" class="screen">
+      <div class="panel" style="text-align:center">
+        <h2 class="section-title">활동 완료</h2>
+        <p class="lead" id="scoreSummary">오늘 활동을 완료했습니다.</p>
+        <div class="score-big" id="finalScore">0</div>
+        <div class="row" style="justify-content:center"><button class="main-btn" id="scoreRecordsBtn">오늘 활동 기록 보기</button><button class="ghost-btn" id="scoreGameSelectBtn">다른 활동 선택</button><button class="ghost-btn" id="scoreHomeBtn">처음으로</button></div>
+      </div>
+    </section>
+
+    <section id="records" class="screen">
+      <div class="panel">
+        <h2 class="section-title" id="recordsTitle">오늘의 활동 기록</h2>
+        <p class="lead" id="recordsLead">오늘 진행한 측정과 활동을 한 번에 확인합니다.</p>
+        <div class="records" id="recordsBox"></div>
+        <div class="row" style="margin-top:18px"><button class="ghost-btn" id="clearRecordsBtn">기록 지우기</button><button class="main-btn" id="recordsGameSelectBtn">게임 선택으로</button></div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    const screens = [...document.querySelectorAll('.screen')];
+    const $ = (id)=>document.getElementById(id);
+    const video = $('video');
+    const measureCanvas = $('measureCanvas');
+    const gameCanvas = $('gameCanvas');
+    const mctx = measureCanvas.getContext('2d');
+    const gctx = gameCanvas.getContext('2d');
+
+    let mode = null, handLandmarker = null, cameraStarted = false, running = false, currentScreen = 'home';
+    let landmarks = null, lastFrameTime = performance.now();
+    let measure = null, scores = null, recommendations = [];
+    let currentGame = null, game = null;
+
+    const labels = {speed:'속도', accuracy:'정확도', range:'가동범위', stability:'안정성', coordination:'협응'};
+    const childInterpret = {speed:'시각 자극을 보고 손을 움직이는 반응성',accuracy:'손끝을 원하는 위치에 맞추는 조절 능력',range:'화면을 넓게 탐색하며 손을 움직이는 능력',stability:'손을 천천히 조절하며 유지하는 능력',coordination:'눈으로 보고 손가락 동작을 함께 맞추는 능력'};
+    const seniorInterpret = {speed:'지시에 반응해 손 동작을 전환하는 속도',accuracy:'손끝을 목표 위치에 맞추는 정밀성',range:'손목과 손의 움직임 범위',stability:'목표 근처에서 흔들림 없이 유지하는 능력',coordination:'집기, 이동, 놓기 같은 일상 동작 연결 능력'};
+
+    const gameDefs = {
+      child:[
+        {id:'child-speed', metric:'speed', title:'색깔 손놀이', type:'gesture', desc:'색깔 지시에 맞춰 손 모양을 빠르게 바꿔요.', reason:'손 모양을 빠르게 전환하며 반응성을 기릅니다.'},
+        {id:'child-accuracy', metric:'accuracy', title:'보석 끼우기', type:'accuracy', desc:'보석을 집어서 반짝이는 구멍에 쏙 넣어요.', reason:'작은 목표에 손끝을 맞추며 정밀 조절을 연습합니다.'},
+        {id:'child-range', metric:'range', title:'무지개 그리기', type:'path', desc:'손바닥 가운데 점으로 큰 무지개 길을 따라가요.', reason:'손을 넓게 움직이며 가동범위를 키웁니다.'},
+        {id:'child-stability', metric:'stability', title:'물컵 배달하기', type:'stability', desc:'손바닥 가운데 점으로 물컵을 천천히 배달해요.', reason:'길 위에서 천천히 움직이며 흔들림을 줄입니다.'},
+        {id:'child-coordination', metric:'coordination', title:'과일 바구니 분류', type:'sort', desc:'과일을 집어 알맞은 바구니에 넣어요.', reason:'보고 판단하기, 집기, 옮기기를 연결해 연습합니다.'}
+      ],
+      senior:[
+        {id:'senior-speed', metric:'speed', title:'반응 동작 훈련', type:'gesture', desc:'지시에 맞춰 손 펴기, 주먹, 집기 동작을 전환합니다.', reason:'손 동작 전환과 반응 속도를 유지하는 운동입니다.'},
+        {id:'senior-accuracy', metric:'accuracy', title:'정밀 위치 맞추기', type:'accuracy', desc:'표시된 원 안에 손끝을 천천히 정확히 맞춥니다.', reason:'일상 속 버튼 누르기, 약 집기 같은 정밀 동작과 연결됩니다.'},
+        {id:'senior-range', metric:'range', title:'큰 원 그리기 운동', type:'path', desc:'손바닥 중심점을 큰 원 위에 맞춰 천천히 따라갑니다.', reason:'손과 손목의 움직임 범위를 넓히는 운동입니다.'},
+        {id:'senior-stability', metric:'stability', title:'안정 이동 훈련', type:'stability', desc:'손바닥 중심점을 경로 안에 유지하며 이동합니다.', reason:'목표 근처에서 흔들림을 줄이고 안정적으로 움직입니다.'},
+        {id:'senior-coordination', metric:'coordination', title:'집고 분류하기 훈련', type:'sort', desc:'물체를 집어 정해진 위치로 옮깁니다.', reason:'집기와 이동을 함께 수행하는 일상동작 기반 훈련입니다.'}
+      ]
+    };
+
+    function show(id){ screens.forEach(s=>s.classList.toggle('active',s.id===id)); currentScreen=id; running = (id==='measure'||id==='game'); resizeCanvases(); if(id==='records') renderRecords(); }
+    function difficulty(score){ if(score<40) return '쉬움'; if(score<70) return '보통'; return '어려움'; }
+    function saveRecord(record){ const arr=JSON.parse(localStorage.getItem('handtuneRecords')||'[]'); arr.push({...record, at:new Date().toISOString()}); localStorage.setItem('handtuneRecords',JSON.stringify(arr)); }
+    function todayRecords(){ const d=new Date().toDateString(); return JSON.parse(localStorage.getItem('handtuneRecords')||'[]').filter(r=>new Date(r.at).toDateString()===d); }
+
+    document.querySelectorAll('.mode-card').forEach(btn=>btn.addEventListener('click',()=>selectMode(btn.dataset.mode)));
+    $('homeBtn').onclick=()=>show('home'); $('recordsTopBtn').onclick=()=>show('records');
+    $('restartMeasureBtn').onclick=()=>startMeasure(); $('remeasureBtn').onclick=()=>startMeasure();
+    $('skipMeasureBtn').onclick=()=>{ finishMeasure(true); };
+    $('goGameSelectBtn').onclick=()=>{ renderGameSelect(); show('gameSelect'); };
+    $('resultRecordsBtn').onclick=()=>show('records');
+    $('exitGameBtn').onclick=()=>{ renderGameSelect(); show('gameSelect'); };
+    $('finishGameBtn').onclick=()=>finishGame();
+    $('scoreRecordsBtn').onclick=()=>show('records'); $('scoreGameSelectBtn').onclick=()=>{ renderGameSelect(); show('gameSelect');}; $('scoreHomeBtn').onclick=()=>show('home');
+    $('clearRecordsBtn').onclick=()=>{ localStorage.removeItem('handtuneRecords'); renderRecords();}; $('recordsGameSelectBtn').onclick=()=>{ if(mode){renderGameSelect(); show('gameSelect')} else show('home'); };
+
+    async function selectMode(nextMode){ mode=nextMode; await ensureCamera(); startMeasure(); }
+
+    async function ensureCamera(){
+      if(cameraStarted) return;
+      try{
+        const stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:'user'}, audio:false});
+        video.srcObject=stream; await video.play(); cameraStarted=true; $('cameraStatus').textContent='카메라 켜짐'; loop(); loadModelSoon();
+      }catch(e){ $('cameraStatus').textContent='카메라 권한 필요'; alert('카메라를 사용할 수 없습니다. 브라우저 권한과 localhost/HTTPS 접속을 확인하세요.'); }
+    }
+    async function loadModelSoon(){
+      if(handLandmarker) return;
+      try{
+        const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+        const fileset = await vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+        handLandmarker = await vision.HandLandmarker.createFromOptions(fileset,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',delegate:'CPU'},runningMode:'VIDEO',numHands:1});
+        $('cameraStatus').textContent='손 인식 준비됨';
+      }catch(e){ console.warn(e); $('cameraStatus').textContent='손 인식 모델 로딩 실패'; }
+    }
+    function resizeCanvases(){ [measureCanvas,gameCanvas].forEach(c=>{ const r=c.getBoundingClientRect(); const w=Math.max(320,Math.round(r.width*devicePixelRatio)); const h=Math.max(220,Math.round(r.height*devicePixelRatio)); if(c.width!==w||c.height!==h){c.width=w;c.height=h;} }); }
+    function loop(){ requestAnimationFrame(loop); resizeCanvases(); if(video.readyState>=2 && handLandmarker){ try{ const res=handLandmarker.detectForVideo(video, performance.now()); landmarks=res.landmarks?.[0]||null; }catch(e){ landmarks=null; } }
+      if(currentScreen==='measure') drawMeasure(); else if(currentScreen==='game') drawGame(); }
+
+    function drawVideo(ctx, canvas){
+      ctx.save(); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#111827'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      if(video.readyState>=2){ const vw=video.videoWidth||1280, vh=video.videoHeight||720; const scale=Math.max(canvas.width/vw, canvas.height/vh); const dw=vw*scale, dh=vh*scale; const dx=(canvas.width-dw)/2, dy=(canvas.height-dh)/2; ctx.translate(canvas.width,0); ctx.scale(-1,1); ctx.drawImage(video, dx, dy, dw, dh); }
+      else { ctx.fillStyle='white'; ctx.font=`${24*devicePixelRatio}px sans-serif`; ctx.fillText('카메라 화면 준비 중입니다',30*devicePixelRatio,60*devicePixelRatio); }
+      ctx.restore(); ctx.save(); ctx.scale(devicePixelRatio,devicePixelRatio); }
+    function toCanvasPoint(p, canvas){ return {x:(1-p.x)*(canvas.width/devicePixelRatio), y:p.y*(canvas.height/devicePixelRatio)}; }
+    function dist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+    function handInfo(canvas){
+      if(!landmarks) return null;
+      const pts=landmarks.map(p=>toCanvasPoint(p,canvas));
+      const palmIdx=[0,5,9,13,17]; const palm=palmIdx.reduce((s,i)=>({x:s.x+pts[i].x,y:s.y+pts[i].y}),{x:0,y:0}); palm.x/=palmIdx.length; palm.y/=palmIdx.length;
+      const pinchCenter={x:(pts[4].x+pts[8].x)/2,y:(pts[4].y+pts[8].y)/2}; const pinchDistance=dist(pts[4],pts[8])/(canvas.width/devicePixelRatio);
+      return {pts,palm,pinchCenter,pinchDistance};
+    }
+    function drawHand(ctx, info, opts={}){ if(!info) return; const con=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]]; ctx.lineWidth=2.5; ctx.strokeStyle='rgba(72,240,181,.9)'; con.forEach(([a,b])=>{ctx.beginPath();ctx.moveTo(info.pts[a].x,info.pts[a].y);ctx.lineTo(info.pts[b].x,info.pts[b].y);ctx.stroke();}); info.pts.forEach(p=>{ctx.fillStyle='rgba(255,255,255,.92)';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();});
+      if(opts.showPalm){ ctx.fillStyle='#00d084'; ctx.strokeStyle='white'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(info.palm.x,info.palm.y,12,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.fillStyle='white'; ctx.font='bold 13px sans-serif'; ctx.fillText('손바닥 중심점',info.palm.x+16,info.palm.y-14); }
+      if(opts.showPinch){ ctx.fillStyle='#ffbf47'; ctx.strokeStyle='white'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(info.pinchCenter.x,info.pinchCenter.y,10,0,Math.PI*2); ctx.fill(); ctx.stroke(); }
+    }
+    function isOpen(info){ return info && info.pinchDistance>0.105; } function isPinched(info){ return info && info.pinchDistance<0.052; }
+
+    function startMeasure(){
+      measure={idx:0, success:0, results:[], state:'WAIT_OPEN', target:null, appeared:performance.now(), positions:[], lastPalm:null};
+      $('measureTitle').textContent=mode==='child'?'오늘의 손 탐험 시작!':'오늘의 손 상태 측정';
+      $('measureDesc').textContent=mode==='child'?'반짝이는 점을 집게 손가락으로 잡아보세요. 손가락을 펼쳤다가 쏙 집으면 성공이에요.':'화면에 나타나는 점을 엄지와 검지로 천천히 잡아보세요. 펼친 뒤 목표 근처에서 맞대면 성공입니다.';
+      nextMeasureTarget(); show('measure');
+    }
+    function nextMeasureTarget(){
+      const canvas=measureCanvas, w=canvas.width/devicePixelRatio, h=canvas.height/devicePixelRatio;
+      const pos=[[.5,.5],[.25,.5],[.75,.5],[.5,.25],[.5,.75],[.22,.25],[.78,.25],[.22,.75],[.78,.75],[.5,.5]][measure.idx]||[.5,.5];
+      measure.target={x:pos[0]*w,y:pos[1]*h,r:measure.idx===9?26:34}; measure.state='WAIT_OPEN'; measure.appeared=performance.now(); measure.positions=[];
+      $('measureProgress').textContent=`${measure.idx}/10`; $('measureSuccess').textContent=measure.success; $('measureFeedback').textContent=mode==='child'?'손가락을 활짝 펼치고 반짝이 가까이 가보세요.':'엄지와 검지를 벌린 뒤 목표 가까이 이동하세요.';
+    }
+    function drawMeasure(){
+      drawVideo(mctx,measureCanvas); const ctx=mctx; const info=handInfo(measureCanvas); const t=measure?.target;
+      if(t){ const pulse=1+Math.sin(performance.now()/180)*.1; ctx.fillStyle='rgba(255,191,71,.25)'; ctx.beginPath(); ctx.arc(t.x,t.y,t.r*1.8*pulse,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#ffbf47'; ctx.beginPath(); ctx.arc(t.x,t.y,t.r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='white'; ctx.lineWidth=4; ctx.stroke(); }
+      drawHand(ctx,info,{showPinch:true});
+      if(measure && info && t){ const near=dist(info.pinchCenter,t)<t.r+22; measure.positions.push({x:info.pinchCenter.x,y:info.pinchCenter.y,t:performance.now()}); if(measure.positions.length>25) measure.positions.shift();
+        if(measure.state==='WAIT_OPEN'){ if(isOpen(info)){ measure.state='READY'; $('measureFeedback').textContent=mode==='child'?'좋아요! 이제 반짝이 가까이에서 쏙 집어보세요.':'좋습니다. 목표 근처에서 엄지와 검지를 천천히 맞대세요.'; } }
+        else if(measure.state==='READY'){ if(near && isPinched(info)){ const rt=performance.now()-measure.appeared; const error=dist(info.pinchCenter,t); measure.results.push({success:true,rt,error,target:t,positions:[...measure.positions]}); measure.success++; measure.state='WAIT_RELEASE'; $('measureSuccess').textContent=measure.success; $('measureFeedback').textContent=mode==='child'?'쏙 잡았어요! 다음 반짝이를 위해 손가락을 다시 펼쳐주세요.':'잘하셨습니다. 다음 목표를 위해 손가락을 다시 펼쳐주세요.'; }
+          else if(near) $('measureFeedback').textContent=mode==='child'?'가까워요! 엄지와 검지를 붙여 잡아보세요.':'목표에 가까워졌습니다. 엄지와 검지를 맞대세요.'; }
+        else if(measure.state==='WAIT_RELEASE'){ if(isOpen(info)){ measure.idx++; if(measure.idx>=10) finishMeasure(false); else nextMeasureTarget(); } }
+      }
+      ctx.restore();
+    }
+    function finishMeasure(example=false){
+      if(example || !measure || measure.results.length<3){ scores={speed:Math.floor(45+Math.random()*35),accuracy:Math.floor(35+Math.random()*45),range:Math.floor(45+Math.random()*45),stability:Math.floor(35+Math.random()*45),coordination:Math.floor(40+Math.random()*40)}; }
+      else{
+        const r=measure.results; const avgRt=r.reduce((s,x)=>s+x.rt,0)/r.length; const avgErr=r.reduce((s,x)=>s+x.error,0)/r.length; const outer=r.filter(x=>x.target.x<220||x.target.x>(measureCanvas.width/devicePixelRatio-220)||x.target.y<160||x.target.y>(measureCanvas.height/devicePixelRatio-160)).length;
+        const jitter=r.reduce((s,x)=>{const ps=x.positions.slice(-10); if(ps.length<2)return s+70; let m=0; for(let i=1;i<ps.length;i++)m+=dist(ps[i],ps[i-1]); return s+m/ps.length;},0)/r.length;
+        const successRate=r.length/10;
+        scores={speed:clamp(105-avgRt/35,20,100),accuracy:clamp(110-avgErr,20,100),range:clamp(35+outer*10,20,100),stability:clamp(100-jitter*2.2,20,100),coordination:clamp(successRate*55+(110-avgErr)*.25+(105-avgRt/35)*.2,20,100)};
+        Object.keys(scores).forEach(k=>scores[k]=Math.round(scores[k]));
+      }
+      buildRecommendations(); saveRecord({type:'measurement',mode,scores,recommendations:recommendations.map(r=>({metric:r.metric,gameTitle:r.game.title,difficulty:r.difficulty}))}); renderMeasureResult(); show('measureResult');
+    }
+    function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+    function buildRecommendations(){ const sorted=Object.entries(scores).sort((a,b)=>a[1]-b[1]).slice(0,2); const games=gameDefs[mode]; recommendations=sorted.map(([metric,score])=>{const game=games.find(g=>g.metric===metric); return {metric,score,game,difficulty:difficulty(score),reason:game.reason};}); }
+    function drawRadarChart(){
+      const canvas=$('radarCanvas'); if(!canvas||!scores) return;
+      const ratio=window.devicePixelRatio||1; const rect=canvas.getBoundingClientRect();
+      const cssW=Math.max(300,Math.round(rect.width||360)); const cssH=Math.max(250,Math.round(rect.height||300));
+      canvas.width=Math.round(cssW*ratio); canvas.height=Math.round(cssH*ratio);
+      const ctx=canvas.getContext('2d'); ctx.setTransform(ratio,0,0,ratio,0,0); ctx.clearRect(0,0,cssW,cssH);
+      const keys=['speed','accuracy','range','stability','coordination'];
+      const names=keys.map(k=>labels[k]); const vals=keys.map(k=>scores[k]||0);
+      const cx=cssW/2, cy=cssH/2+8, R=Math.min(cssW,cssH)*0.31, N=5;
+      ctx.lineJoin='round';
+      for(let level=5;level>=1;level--){ const r=R*level/5; ctx.beginPath();
+        for(let i=0;i<N;i++){ const a=-Math.PI/2+Math.PI*2*i/N; const x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r; if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+        ctx.closePath(); ctx.fillStyle=level===5?'rgba(238,242,255,.65)':'rgba(255,255,255,.35)'; ctx.fill(); ctx.strokeStyle='#dfe5f2'; ctx.lineWidth=1; ctx.stroke(); }
+      for(let i=0;i<N;i++){ const a=-Math.PI/2+Math.PI*2*i/N; const x=cx+Math.cos(a)*R, y=cy+Math.sin(a)*R; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x,y); ctx.strokeStyle='#e9edfb'; ctx.stroke(); const lx=cx+Math.cos(a)*(R+38), ly=cy+Math.sin(a)*(R+34); ctx.fillStyle='#172033'; ctx.font='800 14px system-ui, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(names[i],lx,ly); }
+      ctx.beginPath();
+      const points=[];
+      for(let i=0;i<N;i++){ const a=-Math.PI/2+Math.PI*2*i/N; const r=R*(vals[i]/100); const x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r; points.push([x,y]); if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+      ctx.closePath(); ctx.fillStyle='rgba(124,77,255,.25)'; ctx.fill(); ctx.strokeStyle='#5268ff'; ctx.lineWidth=3; ctx.stroke();
+      points.forEach(([x,y],i)=>{ ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fillStyle=i<2?'#ffbf47':'#5268ff'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke(); });
+      ctx.fillStyle='#647089'; ctx.font='700 12px system-ui, sans-serif'; ctx.textAlign='center'; ctx.fillText('점수가 바깥쪽에 가까울수록 해당 능력이 높습니다.',cx,cssH-10);
+    }
+    function renderMeasureResult(){
+      $('resultTitle').textContent=mode==='child'?'오늘의 손 능력 카드':'오늘의 손 운동 상태';
+      $('resultLead').textContent=mode==='child'?'어떤 손 놀이를 하면 더 재미있게 연습할 수 있을까요?':'오늘 측정 결과를 바탕으로 손 운동 활동을 추천합니다.';
+      const interp=mode==='child'?childInterpret:seniorInterpret; $('metricsBox').innerHTML=Object.entries(scores).map(([k,v])=>`<div class="metric"><span>${labels[k]}</span><strong>${v}</strong><div class="bar"><span style="width:${v}%"></span></div><small>${interp[k]}</small></div>`).join('');
+      drawRadarChart();
+      $('resultRecommendations').innerHTML=recommendations.map((r,i)=>recCard(r,i,true)).join('');
+    }
+    function recCard(r,i,buttons=false){ return `<div class="game-card recommended"><span class="badge">추천 ${i+1}</span><h3>${r.game.title}</h3><p><b>부족 항목:</b> ${labels[r.metric]} · <span class="difficulty">난이도 ${r.difficulty}</span></p><p>${r.reason}</p>${buttons?`<button class="main-btn" data-start="${r.game.id}">바로 시작</button>`:''}</div>`; }
+    document.addEventListener('click',e=>{ const id=e.target?.dataset?.start; if(id) startGame(id); });
+    function renderGameSelect(){ const games=gameDefs[mode]; const recIds=new Set(recommendations.map(r=>r.game.id)); $('gameSelectTitle').textContent=mode==='child'?'어린이 소근육 발달 모드 · 게임 선택':'시니어 소근육 재활성화 모드 · 운동 선택';
+      $('recommendedGames').innerHTML=recommendations.map((r,i)=>recCard(r,i,true)).join('');
+      $('otherGames').innerHTML=games.filter(g=>!recIds.has(g.id)).map(g=>`<div class="game-card"><h3>${g.title}</h3><p><b>훈련 항목:</b> ${labels[g.metric]}</p><p>${g.desc}</p><button class="ghost-btn" data-start="${g.id}">시작하기</button></div>`).join(''); }
+
+    function startGame(id){ currentGame=gameDefs[mode].find(g=>g.id===id); const rec=recommendations.find(r=>r.game.id===id); const diff=rec?.difficulty||'보통'; const targetCount=diff==='쉬움'?8:diff==='보통'?10:12; game={score:0,idx:0,total:targetCount,state:'WAIT_OPEN',target:null,held:false,pathProgress:0,lastPoint:null,gesture:null,gestureStart:performance.now(),difficulty:diff,sortItem:null}; $('gameTitle').textContent=currentGame.title; $('gameDesc').textContent=currentGame.desc+` · 난이도 ${diff}`; $('pathNote').style.display=(currentGame.type==='path'||currentGame.type==='stability')?'block':'none'; $('gameScore').textContent='0'; $('gameProgress').textContent=`0/${game.total}`; setupGameRound(); show('game'); }
+    function setupGameRound(){
+      const w=gameCanvas.width/devicePixelRatio,h=gameCanvas.height/devicePixelRatio;
+      game.state='WAIT_OPEN';
+      game.held=false;
+      game.lastPoint=null;
+      game.holdStart=null;
+      game.expectedT=0;
+      game.routeProgress=0;
+      game.spill=0;
+
+      if(currentGame.type==='gesture'){
+        const options=mode==='child'?
+          [
+            ['빨간색','손을 활짝 펴기','open','#ff5b6b'],
+            ['노란색','엄지와 검지 집기','pinch','#ffbf47'],
+            ['초록색','주먹 쥐기','fist','#2fcf7f'],
+            ['파란색','검지만 펴기','point','#4f8dff'],
+            ['보라색','브이 손가락 만들기','peace','#8f63ff']
+          ]:
+          [
+            ['빨강','손을 활짝 펴세요','open','#ff5b6b'],
+            ['노랑','엄지와 검지를 맞대세요','pinch','#ffbf47'],
+            ['초록','주먹을 천천히 쥐세요','fist','#2fcf7f'],
+            ['파랑','검지만 펴보세요','point','#4f8dff'],
+            ['보라','검지와 중지를 함께 펴보세요','peace','#8f63ff']
+          ];
+        game.gesture=options[Math.floor(Math.random()*options.length)];
+        game.gestureStart=performance.now();
+        $('gameFeedback').textContent=`${game.gesture[1]} · 빨노초파보 5가지 동작을 연습합니다.`;
+      }
+      else if(currentGame.type==='accuracy'){
+        if(mode==='child'){
+          game.gem={x:w*.26,y:h*.33,r:game.difficulty==='쉬움'?32:game.difficulty==='보통'?26:22};
+          game.hole={x:w*.72,y:h*.58,r:game.difficulty==='쉬움'?58:game.difficulty==='보통'?47:38};
+          $('gameFeedback').textContent='손가락을 펼친 뒤 보석을 집고, 오른쪽 구멍에 넣은 다음 손가락을 펼쳐 놓으세요.';
+        }else{
+          game.target={x:w*(.35+Math.random()*.3),y:h*(.35+Math.random()*.3),r:game.difficulty==='쉬움'?55:game.difficulty==='보통'?42:32};
+          game.holdNeed=game.difficulty==='쉬움'?650:game.difficulty==='보통'?900:1200;
+          $('gameFeedback').textContent='손끝 집기점을 목표 원 안에 천천히 맞추고 유지하세요.';
+        }
+      }
+      else if(currentGame.type==='sort'){
+        const baskets=[
+          {name:'빨강',fruit:'사과',emoji:'🍎',xRatio:.20,c:'#ff6b6b'},
+          {name:'노랑',fruit:'바나나',emoji:'🍌',xRatio:.50,c:'#ffbf47'},
+          {name:'보라',fruit:'포도',emoji:'🍇',xRatio:.80,c:'#8f63ff'}
+        ];
+        game.baskets=baskets;
+        game.sortItem=baskets[Math.floor(Math.random()*baskets.length)];
+        game.item={r:34,c:game.sortItem.c};
+        $('gameFeedback').textContent=mode==='child'?`${game.sortItem.emoji} ${game.sortItem.fruit}를 집어서 같은 색 바구니에 넣어보세요.`:`${game.sortItem.name} 물체를 집어 같은 색 위치로 옮긴 뒤 손가락을 펼쳐 놓으세요.`;
+      }
+      else if(currentGame.type==='path'){
+        game.expectedT=0;
+        $('gameFeedback').textContent=mode==='child'?'손바닥 가운데 점을 무지개 시작점에 올리고 큰 곡선을 따라 그려보세요.':'손바닥 중심점을 원의 시작점에 맞춘 뒤 천천히 원을 따라 움직이세요.';
+      }
+      else if(currentGame.type==='stability'){
+        game.routeProgress=0;
+        game.spill=0;
+        game.deliveryStarted=false;
+        game.lastRouteProgress=0;
+        $('gameFeedback').textContent=mode==='child'?'손바닥 가운데 점으로 물컵을 길 위에서 천천히 배달하세요. 너무 빠르면 물이 흔들려요.':'손바닥 중심점을 배달 경로 안에 유지하며 천천히 이동하세요.';
+      }
+    }
+    function completeRound(points=10){ game.score+=points; game.idx++; $('gameScore').textContent=game.score; $('gameProgress').textContent=`${game.idx}/${game.total}`; if(game.idx>=game.total) finishGame(); else setupGameRound(); }
+    function drawGame(){
+      drawVideo(gctx,gameCanvas); const ctx=gctx; const info=handInfo(gameCanvas); const w=gameCanvas.width/devicePixelRatio,h=gameCanvas.height/devicePixelRatio;
+      if(!currentGame||!game){ctx.restore();return;}
+      $('gameStatus').textContent=handLandmarker?'손 인식 중':'카메라 표시 중';
+      if(currentGame.type==='gesture') drawGestureGame(ctx,info,w,h);
+      else if(currentGame.type==='accuracy') drawAccuracyGame(ctx,info,w,h);
+      else if(currentGame.type==='path') drawRainbowGame(ctx,info,w,h);
+      else if(currentGame.type==='stability') drawDeliveryGame(ctx,info,w,h);
+      else if(currentGame.type==='sort') drawSortGame(ctx,info,w,h);
+      ctx.restore();
+    }
+
+    function fingerStates(info){
+      if(!info) return null;
+      const p=info.pts;
+      const ext=(tip,pip)=>p[tip].y < p[pip].y - 8;
+      return {
+        index: ext(8,6),
+        middle: ext(12,10),
+        ring: ext(16,14),
+        pinky: ext(20,18)
+      };
+    }
+    function isFist(info){ const f=fingerStates(info); return !!f && !f.index && !f.middle && !f.ring && !f.pinky && info.pinchDistance<0.11; }
+    function isPoint(info){ const f=fingerStates(info); return !!f && f.index && !f.middle && !f.ring && !f.pinky; }
+    function isPeace(info){ const f=fingerStates(info); return !!f && f.index && f.middle && !f.ring && !f.pinky; }
+    function gestureOK(info,kind){
+      if(kind==='pinch') return isPinched(info);
+      if(kind==='open') return isOpen(info);
+      if(kind==='fist') return isFist(info);
+      if(kind==='point') return isPoint(info);
+      if(kind==='peace') return isPeace(info);
+      return false;
+    }
+    function drawGestureGame(ctx,info,w,h){
+      const [label,instruction,kind,color]=game.gesture;
+      ctx.fillStyle=color; roundRect(ctx,w*.16,h*.12,w*.68,h*.44,30,true);
+      ctx.fillStyle='white'; ctx.font='bold 36px sans-serif'; ctx.textAlign='center'; ctx.fillText(label,w*.5,h*.29);
+      ctx.font='bold 23px sans-serif'; ctx.fillText(instruction,w*.5,h*.42);
+      ctx.font='bold 15px sans-serif'; ctx.fillText('빨강·노랑·초록·파랑·보라 5가지 동작',w*.5,h*.51);
+      drawHand(ctx,info,{});
+      if(info && gestureOK(info,kind) && performance.now()-game.gestureStart>350){
+        const rt=performance.now()-game.gestureStart;
+        completeRound(Math.max(6,Math.round(23-rt/230)));
+      }
+    }
+
+    function drawAccuracyGame(ctx,info,w,h){
+      if(mode==='child') drawGemInsertGame(ctx,info,w,h);
+      else drawSeniorPrecisionGame(ctx,info,w,h);
+    }
+    function drawGemInsertGame(ctx,info,w,h){
+      const gemPos=game.held&&info?info.pinchCenter:game.gem;
+      const hole=game.hole;
+      ctx.fillStyle='rgba(124,77,255,.14)'; ctx.beginPath(); ctx.arc(hole.x,hole.y,hole.r*1.35,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#8f63ff'; ctx.lineWidth=8; ctx.beginPath(); ctx.arc(hole.x,hole.y,hole.r,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle='#8f63ff'; ctx.font='bold 17px sans-serif'; ctx.textAlign='center'; ctx.fillText('보석 구멍',hole.x,hole.y+hole.r+26);
+      ctx.save(); ctx.translate(gemPos.x,gemPos.y); ctx.rotate(Math.PI/4); ctx.fillStyle='#ffbf47'; ctx.strokeStyle='white'; ctx.lineWidth=4; ctx.fillRect(-game.gem.r*.72,-game.gem.r*.72,game.gem.r*1.44,game.gem.r*1.44); ctx.strokeRect(-game.gem.r*.72,-game.gem.r*.72,game.gem.r*1.44,game.gem.r*1.44); ctx.restore();
+      drawHand(ctx,info,{showPinch:true});
+      if(!info)return;
+      if(!game.held){
+        if(game.state==='WAIT_OPEN' && isOpen(info)){ game.state='READY'; $('gameFeedback').textContent='보석 가까이에서 엄지와 검지를 오므려 보석을 집으세요.'; }
+        if(game.state==='READY' && dist(info.pinchCenter,game.gem)<game.gem.r+28 && isPinched(info)){
+          game.held=true; game.state='CARRY'; $('gameFeedback').textContent='잘 집었어요. 보석을 구멍 안으로 옮긴 뒤 손가락을 펼쳐 놓으세요.';
+        }
+      }else{
+        const inHole=dist(info.pinchCenter,hole)<hole.r;
+        if(inHole && isOpen(info)){
+          $('gameFeedback').textContent='쏙 들어갔어요! 다음 보석을 준비합니다.';
+          completeRound(22);
+        }else if(inHole){
+          $('gameFeedback').textContent='구멍 안에 도착했어요. 손가락을 펼쳐 보석을 놓으세요.';
+        }
+      }
+    }
+    function drawSeniorPrecisionGame(ctx,info,w,h){
+      const t=game.target;
+      ctx.fillStyle='rgba(82,104,255,.14)'; ctx.beginPath();ctx.arc(t.x,t.y,t.r*1.7,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#5268ff'; ctx.lineWidth=7; ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle='#5268ff'; ctx.beginPath();ctx.arc(t.x,t.y,6,0,Math.PI*2);ctx.fill();
+      drawHand(ctx,info,{showPinch:true});
+      if(!info)return;
+      const near=dist(info.pinchCenter,t)<t.r;
+      if(near){
+        if(!game.holdStart) game.holdStart=performance.now();
+        const held=performance.now()-game.holdStart;
+        $('gameFeedback').textContent=`목표 안에 있습니다. ${Math.min(100,Math.round(held/game.holdNeed*100))}% 유지 중`;
+        if(held>=game.holdNeed) completeRound(20);
+      }else{
+        game.holdStart=null; $('gameFeedback').textContent='노란 집기점을 목표 원 안에 천천히 맞추세요.';
+      }
+    }
+
+    function drawSortGame(ctx,info,w,h){
+      const panel={x:w*.08,y:h*.62,width:w*.84,height:h*.25};
+      ctx.fillStyle='rgba(255,255,255,.86)'; roundRect(ctx,panel.x,panel.y,panel.width,panel.height,26,true);
+      ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=2; roundRect(ctx,panel.x,panel.y,panel.width,panel.height,26,false);
+
+      const basketW=Math.min(168,panel.width*.28), basketH=Math.min(92,panel.height*.62);
+      const basketY=panel.y+panel.height*.56;
+      game.baskets.forEach(b=>{
+        b.x=panel.x+panel.width*b.xRatio;
+        b.y=basketY;
+        ctx.fillStyle=b.c; roundRect(ctx,b.x-basketW/2,b.y-basketH/2,basketW,basketH,20,true);
+        ctx.fillStyle='rgba(255,255,255,.24)'; roundRect(ctx,b.x-basketW*.39,b.y-basketH*.31,basketW*.78,basketH*.50,14,true);
+        ctx.fillStyle='white'; ctx.font='bold 17px sans-serif'; ctx.textAlign='center';
+        ctx.fillText(mode==='child'?`${b.emoji} ${b.name} 바구니`:`${b.name} 위치`,b.x,b.y+5);
+      });
+
+      const restingItem={x:w*.5,y:h*.25,r:game.item.r,c:game.item.c};
+      const item=game.held&&info?{...info.pinchCenter,r:game.item.r,c:game.item.c}:restingItem;
+      if(mode==='child'){
+        ctx.font=`${Math.round(item.r*1.55)}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(game.sortItem.emoji,item.x,item.y);
+        ctx.textBaseline='alphabetic';
+      }else{
+        ctx.fillStyle=game.item.c; ctx.beginPath();ctx.arc(item.x,item.y,game.item.r,0,Math.PI*2);ctx.fill(); ctx.strokeStyle='white';ctx.lineWidth=5;ctx.stroke();
+        ctx.fillStyle='white'; ctx.font='bold 15px sans-serif'; ctx.textAlign='center'; ctx.fillText('물체',item.x,item.y+5);
+      }
+      drawHand(ctx,info,{showPinch:true});
+      if(!info)return;
+      if(!game.held){
+        if(game.state==='WAIT_OPEN' && isOpen(info)){game.state='READY'; $('gameFeedback').textContent='과일 가까이에서 손가락을 펼친 뒤, 집게 동작으로 집어보세요.';}
+        if(game.state==='READY' && dist(info.pinchCenter,restingItem)<restingItem.r+30 && isPinched(info)){
+          game.held=true; game.state='CARRY'; $('gameFeedback').textContent='잘 집었어요. 같은 색 바구니 안으로 옮긴 뒤 손가락을 펼쳐 놓으세요.';
+        }
+      }else{
+        const b=game.sortItem;
+        const inBasket=Math.abs(info.pinchCenter.x-b.x)<basketW/2 && Math.abs(info.pinchCenter.y-b.y)<basketH/2;
+        if(inBasket && isOpen(info)){ $('gameFeedback').textContent='잘 분류했습니다!'; completeRound(20); }
+        else if(inBasket){ $('gameFeedback').textContent='바구니 안에 도착했어요. 손가락을 펼쳐 놓으세요.'; }
+      }
+    }
+
+    function drawRainbowGame(ctx,info,w,h){
+      const rainbowColors=['#ff6b6b','#ffbf47','#37d67a','#4f8dff','#8f63ff'];
+      for(let i=0;i<5;i++){
+        ctx.strokeStyle=rainbowColors[i]; ctx.lineWidth=15; ctx.lineCap='round';
+        ctx.beginPath();
+        const y=h*.78+i*2;
+        ctx.arc(w*.5,y,w*(.36-i*.025),Math.PI,Math.PI*2);
+        ctx.stroke();
+      }
+      const expected=rainbowPoint(game.expectedT,w,h);
+      ctx.fillStyle='rgba(255,255,255,.92)'; ctx.beginPath(); ctx.arc(expected.x,expected.y,22,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#172033'; ctx.lineWidth=3; ctx.stroke();
+      ctx.fillStyle='#172033'; ctx.font='bold 13px sans-serif'; ctx.textAlign='center'; ctx.fillText('따라갈 점',expected.x,expected.y+4);
+      drawHand(ctx,info,{showPalm:true});
+      if(!info)return;
+      const d=dist(info.palm,expected);
+      if(d<42){
+        game.expectedT=Math.min(1,game.expectedT+0.012);
+        $('gameFeedback').textContent='좋아요. 손바닥 중심점으로 무지개 곡선을 따라 그리고 있어요.';
+      }else{
+        $('gameFeedback').textContent='손바닥 가운데 점을 하얀 따라갈 점 위에 맞춰주세요.';
+      }
+      ctx.fillStyle='#21a67a'; ctx.font='bold 22px sans-serif'; ctx.textAlign='left'; ctx.fillText(`진행률 ${Math.round(game.expectedT*100)}%`,24,34);
+      if(game.expectedT>=1) completeRound(18);
+    }
+    function rainbowPoint(t,w,h){
+      const angle=Math.PI + t*Math.PI;
+      const cx=w*.5, cy=h*.78, r=w*.36;
+      return {x:cx+r*Math.cos(angle), y:cy+r*Math.sin(angle)};
+    }
+
+    function drawDeliveryGame(ctx,info,w,h){
+      const route=deliveryRoute(w,h);
+      ctx.lineWidth=50; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='rgba(255,191,71,.30)';
+      ctx.beginPath(); ctx.moveTo(route[0].x,route[0].y); route.slice(1).forEach(p=>ctx.lineTo(p.x,p.y)); ctx.stroke();
+      ctx.lineWidth=4; ctx.strokeStyle='white'; ctx.stroke();
+      ctx.fillStyle='#21a67a'; ctx.beginPath(); ctx.arc(route[0].x,route[0].y,18,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#ef6b73'; ctx.beginPath(); ctx.arc(route[route.length-1].x,route[route.length-1].y,20,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='white'; ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.fillText('출발',route[0].x,route[0].y+5); ctx.fillText('도착',route[route.length-1].x,route[route.length-1].y+5);
+      drawHand(ctx,info,{showPalm:true});
+      if(info){
+        ctx.font='bold 38px sans-serif'; ctx.textAlign='center'; ctx.fillText('🥤',info.palm.x,info.palm.y-22);
+        const proj=nearestRouteProgress(info.palm,route);
+        let speed=0; if(game.lastPoint) speed=dist(info.palm,game.lastPoint); game.lastPoint={...info.palm};
+        const maxSpeed=game.difficulty==='쉬움'?34:game.difficulty==='보통'?27:22;
+        const startDistance=dist(info.palm,route[0]);
+        const onRoute=proj.distance<36;
+        if(!game.deliveryStarted){
+          if(startDistance<54 && onRoute){
+            game.deliveryStarted=true;
+            game.routeProgress=0;
+            $('gameFeedback').textContent='출발점에서 시작했어요. 손바닥 중심점을 길을 따라 천천히 앞으로 움직이세요.';
+          }else{
+            $('gameFeedback').textContent='먼저 손바닥 중심점을 초록색 출발점 위에 올려주세요. 도착점에 가만히 있어도 진행되지 않아요.';
+          }
+        }else if(!onRoute){
+          game.spill=Math.min(100,game.spill+0.8);
+          $('gameFeedback').textContent='길 밖으로 나갔어요. 손바닥 중심점을 배달길 안에 올려주세요.';
+        }else if(speed>=maxSpeed){
+          game.spill=Math.min(100,game.spill+1.2);
+          $('gameFeedback').textContent='물이 흔들려요. 조금 더 천천히 움직여보세요.';
+        }else{
+          const forward=proj.progress-game.routeProgress;
+          const maxStep=game.difficulty==='쉬움'?0.055:game.difficulty==='보통'?0.045:0.035;
+          const canAdvance=forward>0.002 && forward<=maxStep;
+          const tooFarAhead=forward>maxStep;
+          if(canAdvance){
+            game.routeProgress=proj.progress;
+            game.spill=Math.max(0,game.spill-0.15);
+            $('gameFeedback').textContent='좋아요. 물컵이 길을 따라 안정적으로 이동하고 있어요.';
+          }else if(tooFarAhead){
+            game.spill=Math.min(100,game.spill+0.6);
+            $('gameFeedback').textContent='너무 앞쪽으로 건너뛰었어요. 현재 진행 위치에서 길을 따라 순서대로 이동하세요.';
+          }else{
+            $('gameFeedback').textContent='손바닥 중심점을 길 위에서 앞으로 천천히 움직이면 진행률이 올라갑니다.';
+          }
+        }
+      }
+      ctx.fillStyle='#172033'; ctx.font='bold 21px sans-serif'; ctx.textAlign='left';
+      ctx.fillText(`진행률 ${Math.round(game.routeProgress*100)}%`,24,34);
+      ctx.fillText(`흔들림 ${Math.round(game.spill)}%`,24,62);
+      if(game.routeProgress>=0.98 && game.spill<75) completeRound(Math.max(8,22-Math.round(game.spill/8)));
+    }
+    function deliveryRoute(w,h){
+      return mode==='child'?
+        [{x:w*.14,y:h*.72},{x:w*.34,y:h*.72},{x:w*.45,y:h*.52},{x:w*.66,y:h*.52},{x:w*.84,y:h*.32}]:
+        [{x:w*.14,y:h*.68},{x:w*.38,y:h*.68},{x:w*.38,y:h*.42},{x:w*.62,y:h*.42},{x:w*.84,y:h*.28}];
+    }
+    function nearestRouteProgress(p,route){
+      let total=0; const lens=[];
+      for(let i=0;i<route.length-1;i++){ const l=dist(route[i],route[i+1]); lens.push(l); total+=l; }
+      let best={distance:Infinity,progress:0}; let acc=0;
+      for(let i=0;i<route.length-1;i++){
+        const a=route[i], b=route[i+1]; const vx=b.x-a.x, vy=b.y-a.y; const len2=vx*vx+vy*vy;
+        const tt=Math.max(0,Math.min(1,((p.x-a.x)*vx+(p.y-a.y)*vy)/len2));
+        const q={x:a.x+vx*tt,y:a.y+vy*tt}; const d=dist(p,q);
+        if(d<best.distance) best={distance:d,progress:(acc+lens[i]*tt)/total};
+        acc+=lens[i];
+      }
+      return best;
+    }
+    function finishGame(){ if(!currentGame||!game)return; const successRate=Math.round((game.idx/game.total)*100); const final=Math.max(game.score,Math.round(successRate*.8)); saveRecord({type:'game',mode,gameTitle:currentGame.title,metric:currentGame.metric,difficulty:game.difficulty,score:final,successRate}); $('finalScore').textContent=final; $('scoreSummary').textContent=`${currentGame.title} 완료 · 훈련 항목 ${labels[currentGame.metric]} · 난이도 ${game.difficulty}`; show('score'); }
+    function roundRect(ctx,x,y,w,h,r,fill){ ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r); if(fill)ctx.fill(); else ctx.stroke(); }
+
+    function renderRecords(){ const recs=todayRecords(); $('recordsTitle').textContent=mode==='child'?'오늘의 손 놀이 기록':'오늘의 손 운동 기록'; $('recordsLead').textContent=mode==='child'?'오늘 모은 별과 완료한 놀이를 확인해요.':'오늘 운동 시간, 성공률, 진행한 활동을 확인합니다.'; if(!recs.length){$('recordsBox').innerHTML='<div class="record-item"><h3>아직 기록이 없습니다</h3><p class="muted">측정이나 게임을 완료하면 여기에 표시됩니다.</p></div>';return;}
+      $('recordsBox').innerHTML=recs.map(r=>{ if(r.type==='measurement'){ const lows=Object.entries(r.scores).sort((a,b)=>a[1]-b[1]).slice(0,2).map(([k,v])=>`${labels[k]} ${v}`).join(', '); return `<div class="record-item"><h3>${r.mode==='child'?'손 능력 카드':'손 운동 상태'} 측정</h3><p>낮게 나온 항목: <b>${lows}</b></p><p class="muted">추천: ${r.recommendations?.map(x=>x.gameTitle).join(', ')||'-'}</p></div>`;} return `<div class="record-item"><h3>${r.gameTitle}</h3><p><b>${labels[r.metric]}</b> · 난이도 ${r.difficulty}</p><p>점수 ${r.score} · 성공률 ${r.successRate}%</p></div>`; }).join(''); }
+  </script>
+</body>
+</html>
